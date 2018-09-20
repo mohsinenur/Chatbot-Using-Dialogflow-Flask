@@ -1,0 +1,31 @@
+{% extends 'layout.html' %}
+{% block body %}
+<body style="background-image: url({{ url_for('static', filename='image/bg.png') }})">
+<div class="sidenav">
+    <a href="/intents">Intents</a>
+    <a href="#">Entities</a>
+    <a href="#">History</a>
+    <a href="#">Training</a>
+</div>
+<div class="container" style="margin-left: 160px; margin-top: 75px;">
+    {% include 'includes/_flashmsg.html' %}
+    <form class="form-inline" role="form" method="post" action="/intents">
+        <input type="text" name="intent_name" class="form-control mb-2 mr-sm-2" id="createIntent"
+               placeholder="Write intent name">
+        <button type="submit" class="btn btn-primary mb-2">Create Intent</button>
+    </form>
+</div>
+<!-- <button type="button" class="btn btn-primary" id="myBtn2">Modal without Overlay (backdrop:false)</button> -->
+
+<script>
+$(document).ready(function(){
+
+    $("#myBtn2").click(function(){
+        $("#myModal2").modal({backdrop: false});
+    });
+});
+
+</script>
+
+{% endblock %}
+

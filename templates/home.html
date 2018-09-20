@@ -1,0 +1,12 @@
+{% extends 'layout.html' %}
+{% block body %}
+<body style="background-image: url({{ url_for('static', filename='image/bg.png') }})">
+<iframe
+        src="https://1e0f5c2f.ngrok.io/bot"
+        style="position:absolute;right:30;bottom:28"
+        width="350"
+        height="430"
+        border="1px solid #ddd"
+        align="bottom">
+</iframe>
+{% endblock %}
