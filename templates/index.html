@@ -7,27 +7,66 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="icon" type="image/png" href="{{url_for('static', filename='images/easy_logo.png')}}">
-    <title>Easy Customer Care Bot</title>
+    <link rel="icon" type="image/png" href="{{url_for('static', filename='images/abc_logo.png')}}">
+    <title>Customer Care Bot</title>
+    <script type="text/javascript">
+        function div_bottom() {
+            var elem = document.getElementById('auto_scroll');
+            elem.scrollTop = elem.scrollHeight;
+        }
+    </script>
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+        .text_bot {
+            text-align:left;
+            padding:2px 5px;
+            max-width: 75%;
+        }
+        .text_bot span {
+            background-color: #dd92b2;
+            color: #fff;
+            margin: 1px 0;
+            padding: 2px 10px 6px 10px;
+            border-radius: 12px;
+            display: inline-block;
+            clear: both;
+        }
+        .text_human {
+            text-align:right;
+            padding:0 5px;
+        }
+        .text_human span {
+            background-color: #28a7ab;
+            color: #fff;
+            margin: 1px 0;
+            padding: 2px 10px 6px 10px;
+            border-radius: 12px;
+            display: inline-block;
+            clear: both;
+        }
+
+        textarea:focus, input:focus{
+            outline: none;
+        }
+    </style>
 </head>
-<body style="background-image: url({{ url_for('static', filename='images/bg.png') }})">
-<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+<body>
+<div id="full_body">
+<nav class="navbar navbar-expand-sm border-bottom bg-white navbar-dark" style="padding-top: 0px;">
     <!-- Brand/logo -->
-    <a class="navbar-brand" href="#">
-        <img src="{{url_for('static', filename='images/easy_logo.png')}}" alt="" style="width:40px;">
-    </a>
-    <ul class="navbar-nav">
-        <li class="nav-item">
-            <span style="color: white; font-weight: bold;">Customer Care Help</span>
-        </li>
-    </ul>
+    <div>
+        <a class="navbar-brand" href="#">
+        <img src="{{url_for('static', filename='images/abc_logo.png')}}" alt="" style="width:90px;">
+        </a>
+    </div>
+    <div style="margin-top: 9px;">
+        <span style="color: rgba(0,0,0,.5); font-weight: bold; padding-right: 10px;"></span>
+    </div>
 </nav>
-<div class="b-agent-demo_powered_by">
-    <a href="/" target="_blank">
-        <img src="{{url_for('static', filename='images/sslwireless_logo.jpg')}}">
-        <span>Powered by</span>
-    </a>
-</div>
+
 <div class="chat-container" id="auto_scroll" style="overflow-y: auto;">
     <!-- chat messages -->
     {% if session.logged_in%}
@@ -40,25 +79,34 @@
     </div>
     {% endfor %}
     {% endif %}
+    <div class="text_bot" style="">
+        <span>{{reply}}</span>
+        <span> Select quick link below </span></br>
+        <div id="banking_query_btn" class="btn btn-outline-success btn-sm m-1">Banking Query</div>
+        <div id="topup_button" class="btn btn-outline-success btn-sm m-1">Top Up</div>
+        <div id="general_info_btn" class="btn btn-outline-success btn-sm m-1">General Information</div>
+    </div>
 </div>
-<div>
+<div style="padding: 10px">
     <form id="target">
-        <input class="text_input" autofocus autocomplete="off" type="text" value="" placeholder="Enter message..."
-               id="input_message"/>
+        <input class="text_input" autofocus="autofocus" autocomplete="off" onclick="div_bottom()" onkeypress="div_bottom()"
+               type="text" value="" placeholder="Enter message..." id="input_message"/>
         <input type="submit" hidden onclick="div_bottom()">
     </form>
+</div>
+<div class="b-agent-demo_powered_by">
+    <a href="https://sslwireless.com" target="_blank">
+
+        <img src="static/images/ssl_logo.jpg">
+
+        <span>Powered by</span>
+
+    </a>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
 <script src="https://js.pusher.com/4.1/pusher.min.js"></script>
 <script src="{{ url_for('static', filename='custom.js')}}"></script>
-<script>
-    function div_bottom() {
-        var elem = document.getElementById('auto_scroll');
-        elem.scrollTop = elem.scrollHeight;
-    }
-
-
-</script>
+</div>
 </body>
 </html>
