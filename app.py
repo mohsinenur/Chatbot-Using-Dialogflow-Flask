@@ -14,7 +14,7 @@ import datetime
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.urandom(25)
 
 # Config MySQL
 mysql = MySQL()
@@ -327,6 +327,26 @@ def bot():
                                         ]
                                     },
                                     "platform": "FACEBOOK"
+                                },
+                                {
+                                    "text": {
+                                        "text": [
+                                            'Your balance ' + str(u_balance) + ' taka in account no ' + str(
+                                                account_no) + '.',
+                                        ]
+                                    },
+                                    "platform": "SKYPE"
+                                },
+                                {
+                                    "quickReplies": {
+                                        "title": "Have more query? Select quick link below.",
+                                        "quickReplies": [
+                                            "Banking Query",
+                                            "Top Up",
+                                            "General Information"
+                                        ]
+                                    },
+                                    "platform": "SKYPE"
                                 }
                             ],
                         }
@@ -455,7 +475,7 @@ def bot():
                             history += '<tr><td>' + str(amount) + '</td><td>' + str(trx_type) + '</td><td>' + str(
                                 date_d) + ' ' + ' at ' + str(date_t) + '</td></tr>'
                             fb_history += '(' + str(i) + ') ' + str(trx_type) + ' ' + str(
-                                amount) + ' taka at ' + str(date) + '. '
+                                amount) + ' taka at ' + str(date_t) + ' ' + str(date_d) + '. '
                             i += 1
                         reply = {
                             "fulfillmentText": 'Your transection history below '
@@ -482,6 +502,25 @@ def bot():
                                         ]
                                     },
                                     "platform": "FACEBOOK"
+                                },
+                                {
+                                    "text": {
+                                        "text": [
+                                            "Your transection history: " + fb_history,
+                                        ]
+                                    },
+                                    "platform": "SKYPE"
+                                },
+                                {
+                                    "quickReplies": {
+                                        "title": "Have more query? Select quick link below.",
+                                        "quickReplies": [
+                                            "Banking Query",
+                                            "Top Up",
+                                            "General Information"
+                                        ]
+                                    },
+                                    "platform": "SKYPE"
                                 }
                             ],
                         }
@@ -538,6 +577,19 @@ def bot():
                                 ]
                             },
                             "platform": "FACEBOOK"
+                        },
+                        {
+                            "quickReplies": {
+                                "title": "Please, select an operator below...",
+                                "quickReplies": [
+                                    "Grameenphone",
+                                    "Airtel",
+                                    "Robi",
+                                    "Banglalink",
+                                    "Telitalk"
+                                ]
+                            },
+                            "platform": "SKYPE"
                         }
                     ],
                 }
@@ -605,6 +657,16 @@ def bot():
                                     ]
                                 },
                                 "platform": "FACEBOOK"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "It's prepaid or postpaid?",
+                                    "quickReplies": [
+                                        "Prepaid",
+                                        "Postpaid"
+                                    ]
+                                },
+                                "platform": "SKYPE"
                             }
                         ],
                         "outputContexts": [
@@ -704,6 +766,25 @@ def bot():
                                     ]
                                 },
                                 "platform": "FACEBOOK"
+                            },
+                            {
+                                "text": {
+                                    "text": [
+                                        "Topup successful.",
+                                    ]
+                                },
+                                "platform": "SKYPE"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "Have more query? Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
+                                    ]
+                                },
+                                "platform": "SKYPE"
                             }
                         ],
                     }
@@ -832,6 +913,25 @@ def bot():
                                         ]
                                     },
                                     "platform": "FACEBOOK"
+                                },
+                                {
+                                    "text": {
+                                        "text": [
+                                            "Thanks for your information. Your cheque stopped. Very soon we will contact with you.",
+                                        ]
+                                    },
+                                    "platform": "SKYPE"
+                                },
+                                {
+                                    "quickReplies": {
+                                        "title": "Have more query? Select quick link below.",
+                                        "quickReplies": [
+                                            "Banking Query",
+                                            "Top Up",
+                                            "General Information"
+                                        ]
+                                    },
+                                    "platform": "SKYPE"
                                 }
                             ],
                         }
@@ -914,7 +1014,7 @@ def bot():
                                 "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/chequebookrequest-account-followup",
                                 "lifespanCount": 1,
                                 "parameters": {
-                                    "account_num.original": q_account,
+                                    "account_num.original": query_text,
                                     "account_num": q_account,
                                 }
                             }
@@ -968,6 +1068,17 @@ def bot():
                                         ]
                                     },
                                     "platform": "FACEBOOK"
+                                },
+                                {
+                                    "quickReplies": {
+                                        "title": "How many pages?",
+                                        "quickReplies": [
+                                            "10",
+                                            "25",
+                                            "50"
+                                        ]
+                                    },
+                                    "platform": "SKYPE"
                                 }
                             ],
                             "outputContexts": [
@@ -1015,7 +1126,6 @@ def bot():
             pages = data['queryResult']['parameters']['pages']
             pages = round(pages)
             account_no = data['queryResult']['outputContexts'][0]['parameters']['account_num']
-            account_no = str(round(account_no))
             if 'logged_in' in session:
                 reply = {
                     "fulfillmentText": 'Please, write verification code which sent to your number.',
@@ -1049,6 +1159,25 @@ def bot():
                                         ]
                                     },
                                     "platform": "FACEBOOK"
+                                },
+                                {
+                                    "text": {
+                                        "text": [
+                                            "Your cheque request accepted.",
+                                        ]
+                                    },
+                                    "platform": "SKYPE"
+                                },
+                                {
+                                    "quickReplies": {
+                                        "title": "Have more query? Select quick link below.",
+                                        "quickReplies": [
+                                            "Banking Query",
+                                            "Top Up",
+                                            "General Information"
+                                        ]
+                                    },
+                                    "platform": "SKYPE"
                                 }
                             ],
                         }
@@ -1105,6 +1234,18 @@ def bot():
                                     ]
                                 },
                                 "platform": "FACEBOOK"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "What kind of query you have?",
+                                    "quickReplies": [
+                                        "Balance Check",
+                                        "History",
+                                        "Stop Cheque",
+                                        "Cheque Book Request"
+                                    ]
+                                },
+                                "platform": "SKYPE"
                             }
                         ],
                     }
@@ -1121,6 +1262,16 @@ def bot():
                                     ]
                                 },
                                 "platform": "FACEBOOK"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "What kind of information?",
+                                    "quickReplies": [
+                                        "About Bank",
+                                        "Terms And Conditions"
+                                    ]
+                                },
+                                "platform": "SKYPE"
                             }
                         ],
                     }
@@ -1144,6 +1295,20 @@ def bot():
                                     ]
                                 },
                                 "platform": "FACEBOOK"
+                            },
+                            {
+                                "card": {
+                                    "title": "About Bank ABC",
+                                    "subtitle": "BANK ABC was launched in 2007 as an associated company of one of the",
+                                    "imageUri": "http://sslwireless.com/images/banner/Payment-Deed-of-Agreement.jpg",
+                                    "buttons": [
+                                        {
+                                            "text": "Read more",
+                                            "postback": "http://sslwireless.com"
+                                        }
+                                    ]
+                                },
+                                "platform": "SKYPE"
                             }
                         ],
                     }
@@ -1167,6 +1332,21 @@ def bot():
                                     ]
                                 },
                                 "platform": "FACEBOOK"
+                            },
+                            {
+                                "card": {
+                                    "title": "Terms And Conditions",
+                                    "subtitle": "Feel free to ask any question. If I can't reply your answer then I "
+                                                "will help you to chat with real agent. To know more visit this link...",
+                                    "imageUri": "http://sslwireless.com/images/banner/Payment-Deed-of-Agreement.jpg",
+                                    "buttons": [
+                                        {
+                                            "text": "Read more",
+                                            "postback": "http://sslwireless.com/recent_works.php?id=32"
+                                        }
+                                    ]
+                                },
+                                "platform": "SKYPE"
                             }
                         ],
                     }
@@ -1192,6 +1372,25 @@ def bot():
                                     ]
                                 },
                                 "platform": "FACEBOOK"
+                            },
+                            {
+                                "text": {
+                                    "text": [
+                                        "How can I help you?",
+                                    ]
+                                },
+                                "platform": "SKYPE"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
+                                    ]
+                                },
+                                "platform": "SKYPE"
                             }
                         ],
                     }
@@ -1210,6 +1409,17 @@ def bot():
                             ]
                         },
                         "platform": "FACEBOOK"
+                    },
+                    {
+                        "quickReplies": {
+                            "title": "Could not understand. Please, select a quick link below.",
+                            "quickReplies": [
+                                "Banking Query",
+                                "Top Up",
+                                "General Information"
+                            ]
+                        },
+                        "platform": "SKYPE"
                     }
                 ],
             }
@@ -1233,13 +1443,6 @@ def bot():
                             "text": [
                                 wish + ". I'm Emi, your virtual assistant. How can I help you?"
                             ]
-                        }
-                    },
-                    {
-                        "text": {
-                            "text": [
-                                wish + ". I'm Emi, your virtual assistant. How can I help you?"
-                            ]
                         },
                         "platform": "FACEBOOK"
                     },
@@ -1253,6 +1456,25 @@ def bot():
                             ]
                         },
                         "platform": "FACEBOOK"
+                    },
+                    {
+                        "text": {
+                            "text": [
+                                wish + ". I'm Emi, your virtual assistant. How can I help you?"
+                            ]
+                        },
+                        "platform": "SKYPE"
+                    },
+                    {
+                        "quickReplies": {
+                            "title": "Select quick link below",
+                            "quickReplies": [
+                                "Banking Query",
+                                "Top Up",
+                                "General Information"
+                            ]
+                        },
+                        "platform": "SKYPE"
                     }
                 ],
             }

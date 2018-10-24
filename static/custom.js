@@ -79,7 +79,7 @@ function submit_message(message) {
                 $( "#loading" ).remove();
                 div_bottom()
         }
-        else if (data.message == 'Topup successful.' || data.message.indexOf("Your transection history below") >= 0 || data.message.indexOf("Thanks for your information.") >= 0 || data.message.indexOf("taka in account no") >= 0) {
+        else if (data.message == 'Topup successful.' || data.message.indexOf("cheque request accepted") >= 0 || data.message.indexOf("Your transection history below") >= 0 || data.message.indexOf("Thanks for your information.") >= 0 || data.message.indexOf("taka in account no") >= 0) {
             $('.chat-container').append(`
                     <div class="text_bot" style="">
                         <span>${data.message}</span>
@@ -111,6 +111,19 @@ function submit_message(message) {
                         <span>${data.message}</span></br>
                         <div id="about_btn" class="btn btn-outline-success btn-sm m-1">About Bank</div>
                         <div id="terms_btn" class="btn btn-outline-success btn-sm m-1">Terms And Conditions</div>
+                    </div>
+              `)
+              // remove the loading indicator
+                $( "#loading" ).remove();
+                div_bottom()
+        }
+        else if (data.message == "How many pages?") {
+            $('.chat-container').append(`
+                    <div class="text_bot" style="">
+                        <span>${data.message}</span></br>
+                        <div id="num10_btn" class="btn btn-outline-success btn-sm m-1">10</div>
+                        <div id="num25_btn" class="btn btn-outline-success btn-sm m-1">25</div>
+                        <div id="num50_btn" class="btn btn-outline-success btn-sm m-1">50</div>
                     </div>
               `)
               // remove the loading indicator
@@ -272,5 +285,20 @@ $('.chat-container').on('click', '#about_btn', function (e) {
 $('.chat-container').on('click', '#terms_btn', function (e) {
     e.preventDefault();
     const button_message = 'Terms And Conditions'
+    button_info(button_message)
+});
+$('.chat-container').on('click', '#num10_btn', function (e) {
+    e.preventDefault();
+    const button_message = '10'
+    button_info(button_message)
+});
+$('.chat-container').on('click', '#num25_btn', function (e) {
+    e.preventDefault();
+    const button_message = '25'
+    button_info(button_message)
+});
+$('.chat-container').on('click', '#num50_btn', function (e) {
+    e.preventDefault();
+    const button_message = '50'
     button_info(button_message)
 });

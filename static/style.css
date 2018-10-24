@@ -37,6 +37,7 @@ body,html {
         bottom: 30px;
         padding: 14px;
         position: fixed;
+        font-size: 1rem;
         border-radius: 20px;
     }
     .b-agent-demo_powered_by {
