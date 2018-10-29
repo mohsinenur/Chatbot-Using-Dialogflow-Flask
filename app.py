@@ -89,7 +89,7 @@ def login():
                 session['logged_in'] = True
                 session['uid'] = uid
                 session['first_name'] = name
-                ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 cur.execute("UPDATE users SET last_login=%s WHERE id=%s", (ts, uid))
                 flash('You are now logged in', 'success')
                 resp = make_response(redirect('/'))
@@ -116,6 +116,7 @@ def logout():
         uid = session['uid']
         x = '2018-09-13 17:35:24'
         cur.execute("UPDATE users SET last_login=%s WHERE id=%s", (x, uid))
+        cur.execute("UPDATE users SET web_session=%s WHERE id=%s", (0, uid))
         session.clear()
         flash('You are logged out', 'success')
         return redirect(url_for('index'))
@@ -215,15 +216,212 @@ def bot():
         u_session_text = u_session_text.split('/')
         uid = u_session_text[4]
         print(uid)
-        if display_name == 'Balance Check':
-            if 'logged_in' in session:
+        session_value = '0'
+        if display_name == 'User Verify':
+            if session_value == '0':
                 reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
+                    "fulfillmentText": 'Write your Bank ABC account no...',
+                    "outputContexts": [
+                      {
+                        "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                        "lifespanCount": 1,
+                        "parameters": {
+                          "login.original": "login",
+                          "login": "login"
+                        }
+                      }
+                    ],
                 }
                 return jsonify(reply)
             else:
                 reply = {
-                    "fulfillmentText": 'Write your Bank ABC account no...',
+                    "fulfillmentText": 'You are already verified. How can I help you?',
+                }
+                return jsonify(reply)
+        elif display_name == 'User Verify - Account':
+            account_no = data['queryResult']['parameters']['account_no']
+            # Create cursor
+            cur = mysql.connection.cursor()
+            # Get user by username
+            result = cur.execute("SELECT * FROM account WHERE (account_no=%s)", [account_no, ])
+            if result > 0:
+                # Get stored value
+                data = cur.fetchone()
+                session_value = data['web_session']
+            else:
+                session_value = '0'
+            if session_value == '0':
+                user_detail = requests.get(
+                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
+                user_detail = json.loads(user_detail)
+                if user_detail:
+                    u_id = user_detail[0]['user_id']
+                    code = random.randint(111111, 999999)
+                    # Create cursor
+                    cur = mysql.connection.cursor()
+                    cur.execute("UPDATE users SET verify_code=%s WHERE id=%s", (code, u_id))
+                    cur.close()
+                    reply = {
+                        "fulfillmentText": 'Write verification code which sent to your account mobile number.',
+                        "outputContexts": [
+                            {
+                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-account-followup",
+                                "lifespanCount": 1,
+                                "parameters": {
+                                    "account_no.original": account_no,
+                                    "account_no": account_no
+                                }
+                            }
+                        ],
+                    }
+                    return jsonify(reply)
+                else:
+                    reply = {
+                        "fulfillmentText": 'No account found! Write again.',
+                        "outputContexts": [
+                            {
+                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                                "lifespanCount": 1,
+                                "parameters": {
+                                    "login": "login",
+                                    "login.original": "login"
+                                }
+                            }
+                        ],
+                    }
+                    return jsonify(reply)
+            else:
+                reply = {
+                    "fulfillmentText": 'You are already verified. How can I help you?',
+                }
+                return jsonify(reply)
+        elif display_name == 'User Verify - Account - VCode':
+            v_code = data['queryResult']['parameters']['v_code']
+            v_code = str(round(v_code))
+            uid = 'common'
+            account_no = data['queryResult']['outputContexts'][0]['parameters']['account_no']
+            # Create cursor
+            cur = mysql.connection.cursor()
+            # Get user by username
+            result = cur.execute("SELECT * FROM account WHERE (account_no=%s)", [account_no, ])
+            if result > 0:
+                # Get stored value
+                data = cur.fetchone()
+                session_value = data['web_session']
+            else:
+                session_value = '0'
+            if session_value == '0':
+                user_detail = requests.get(
+                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
+                user_detail = json.loads(user_detail)
+                if user_detail:
+                    u_id = user_detail[0]['user_id']
+                    verify_code_details = requests.get(
+                        'http://127.0.0.1:5000/api_test/users?id={0}'.format(u_id)).content
+                    verify_code_details = json.loads(verify_code_details)
+                    verify_code_api = verify_code_details[0]['verify_code']
+                    if v_code == verify_code_api:
+                        cur = mysql.connection.cursor()
+                        cur.execute("UPDATE users SET web_session=%s WHERE id=%s", (1, u_id))
+                        cur.close()
+                        reply = {
+                            "fulfillmentText": 'Your verification successful. What kind of query you have?',
+                            "fulfillmentMessages": [
+                                {
+                                    "text": {
+                                        "text": [
+                                            "Your verification successful. What kind of query you have?",
+                                        ]
+                                    },
+                                    "platform": "FACEBOOK"
+                                },
+                                {
+                                    "quickReplies": {
+                                        "title": "Have more query? Select quick link below.",
+                                        "quickReplies": [
+                                            "Banking Query",
+                                            "Top Up",
+                                            "General Information"
+                                        ]
+                                    },
+                                    "platform": "FACEBOOK"
+                                },
+                                {
+                                    "text": {
+                                        "text": [
+                                            "Your verification successful. What kind of query you have?",
+                                        ]
+                                    },
+                                    "platform": "SKYPE"
+                                },
+                                {
+                                    "quickReplies": {
+                                        "title": "Have more query? Select quick link below.",
+                                        "quickReplies": [
+                                            "Banking Query",
+                                            "Top Up",
+                                            "General Information"
+                                        ]
+                                    },
+                                    "platform": "SKYPE"
+                                }
+                            ],
+                        }
+                        return jsonify(reply)
+                    else:
+                        reply = {
+                            "fulfillmentText": 'Your verification code ' + v_code + ' not matched. Write again.',
+                            "outputContexts": [
+                                {
+                                    "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-account-followup",
+                                    "lifespanCount": 1,
+                                    "parameters": {
+                                        "number.original": account_no,
+                                        "number": account_no
+                                    }
+                                }
+                            ],
+                        }
+                        return jsonify(reply)
+                else:
+                    reply = {
+                        "fulfillmentText": 'Account not found. Write again.',
+                        "outputContexts": [
+                            {
+                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                                "lifespanCount": 1,
+                                "parameters": {
+                                    "login.original": "login",
+                                    "login": "login"
+                                }
+                            }
+                        ],
+                    }
+                    return jsonify(reply)
+            else:
+                reply = {
+                    "fulfillmentText": 'You are already verified. How can I help you?',
+                }
+                return jsonify(reply)
+        elif display_name == 'Balance Check':
+            if uid == 'test':
+                reply = {
+                    "fulfillmentText": 'I can help you with that. But first I need to verify you. Write your Bank ABC account no...',
+                    "outputContexts": [
+                        {
+                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                            "lifespanCount": 1,
+                            "parameters": {
+                                "login.original": "login",
+                                "login": "login"
+                            }
+                        }
+                    ],
+                }
+                return jsonify(reply)
+            else:
+                reply = {
+                    "fulfillmentText": 'Write your Bank ABC account no to know balance...',
                     "outputContexts": [
                         {
                             "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/balancecheck-followup",
@@ -238,11 +436,68 @@ def bot():
                 return jsonify(reply)
         elif display_name == 'Balance Check - Account':
             account_no = data['queryResult']['queryText']
-            if 'logged_in' in session:
-                reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
-                }
-                return jsonify(reply)
+            # Create cursor
+            cur = mysql.connection.cursor()
+            # Get user by username
+            result = cur.execute("SELECT * FROM account WHERE (account_no=%s)", [account_no, ])
+            if result > 0:
+                session_value = '1'
+            else:
+                session_value = '0'
+            print('session value = '+str(session_value))
+            if session_value == '1':
+                user_detail = requests.get(
+                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
+                user_detail = json.loads(user_detail)
+                if user_detail:
+                    u_balance = user_detail[0]['balance']
+                    reply = {
+                        "fulfillmentText": 'Your balance ' + str(u_balance) + ' taka in account no ' + str(
+                            account_no) + '.',
+                        "fulfillmentMessages": [
+                            {
+                                "text": {
+                                    "text": [
+                                        'Your balance ' + str(u_balance) + ' taka in account no ' + str(
+                                            account_no) + '.',
+                                    ]
+                                },
+                                "platform": "FACEBOOK"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "Have more query? Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
+                                    ]
+                                },
+                                "platform": "FACEBOOK"
+                            },
+                            {
+                                "text": {
+                                    "text": [
+                                        'Your balance ' + str(u_balance) + ' taka in account no ' + str(
+                                            account_no) + '.',
+                                    ]
+                                },
+                                "platform": "SKYPE"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "Have more query? Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
+                                    ]
+                                },
+                                "platform": "SKYPE"
+                            }
+                        ],
+                    }
+                    return jsonify(reply)
             else:
                 user_detail = requests.get(
                     'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
@@ -304,6 +559,9 @@ def bot():
                     verify_code_details = json.loads(verify_code_details)
                     verify_code_api = verify_code_details[0]['verify_code']
                     if v_code == verify_code_api:
+                        cur = mysql.connection.cursor()
+                        cur.execute("UPDATE account SET web_session=%s WHERE account_no=%s", (1, account_no))
+                        cur.close()
                         reply = {
                             "fulfillmentText": 'Your balance ' + str(u_balance) + ' taka in account no ' + str(
                                 account_no) + '.',
@@ -478,7 +736,7 @@ def bot():
                                 amount) + ' taka at ' + str(date_t) + ' ' + str(date_d) + '. '
                             i += 1
                         reply = {
-                            "fulfillmentText": 'Your transection history below '
+                            "fulfillmentText": 'Your tranjection history below '
                                                '<table class="table table-bordered">'
                                                '<thead><tr> <th>Amount</th><th>Type</th><th>Date</th></tr></thead><tbody>'
                                                + history +
@@ -487,7 +745,7 @@ def bot():
                                 {
                                     "text": {
                                         "text": [
-                                            "Your transection history: " + fb_history,
+                                            "Your tranjection history: " + fb_history,
                                         ]
                                     },
                                     "platform": "FACEBOOK"
@@ -506,7 +764,7 @@ def bot():
                                 {
                                     "text": {
                                         "text": [
-                                            "Your transection history: " + fb_history,
+                                            "Your tranjection history: " + fb_history,
                                         ]
                                     },
                                     "platform": "SKYPE"
@@ -1280,7 +1538,7 @@ def bot():
                         "fulfillmentText": 'BANK ABC was launched in 2007 as an associated company of one of the'
                                            ' biggest garments exporting groups in Bangladesh, Concorde Garments. '
                                            'To know more visit this link... '
-                                           '<a href="http://bankabc.com" target="_blank">Bank ABC</a>',
+                                           '<a href="http://bankabc.com" target="_blank">About Bank</a>',
                         "fulfillmentMessages": [
                             {
                                 "card": {
@@ -1297,6 +1555,17 @@ def bot():
                                 "platform": "FACEBOOK"
                             },
                             {
+                                "quickReplies": {
+                                    "title": "Have more query? Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
+                                    ]
+                                },
+                                "platform": "FACEBOOK"
+                            },
+                            {
                                 "card": {
                                     "title": "About Bank ABC",
                                     "subtitle": "BANK ABC was launched in 2007 as an associated company of one of the",
@@ -1306,6 +1575,17 @@ def bot():
                                             "text": "Read more",
                                             "postback": "http://sslwireless.com"
                                         }
+                                    ]
+                                },
+                                "platform": "SKYPE"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "Have more query? Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
                                     ]
                                 },
                                 "platform": "SKYPE"
@@ -1334,6 +1614,17 @@ def bot():
                                 "platform": "FACEBOOK"
                             },
                             {
+                                "quickReplies": {
+                                    "title": "Have more query? Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
+                                    ]
+                                },
+                                "platform": "FACEBOOK"
+                            },
+                            {
                                 "card": {
                                     "title": "Terms And Conditions",
                                     "subtitle": "Feel free to ask any question. If I can't reply your answer then I "
@@ -1344,6 +1635,17 @@ def bot():
                                             "text": "Read more",
                                             "postback": "http://sslwireless.com/recent_works.php?id=32"
                                         }
+                                    ]
+                                },
+                                "platform": "SKYPE"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "Have more query? Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
                                     ]
                                 },
                                 "platform": "SKYPE"

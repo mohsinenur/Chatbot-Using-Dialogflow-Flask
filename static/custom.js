@@ -36,7 +36,7 @@ function submit_message(message) {
     $.post( "/send_message", {message: message}, handle_response);
 
     function handle_response(data) {
-        if (data.message == 'Banking Query' || data.message == 'What kind of query you have?') {
+        if (data.message == 'Banking Query' || data.message.indexOf("What kind of query you have?") >= 0) {
             $('.chat-container').append(`
                     <div class="text_bot">
                             <span>${data.message}</span></br>
@@ -79,7 +79,7 @@ function submit_message(message) {
                 $( "#loading" ).remove();
                 div_bottom()
         }
-        else if (data.message == 'Topup successful.' || data.message.indexOf("cheque request accepted") >= 0 || data.message.indexOf("Your transection history below") >= 0 || data.message.indexOf("Thanks for your information.") >= 0 || data.message.indexOf("taka in account no") >= 0) {
+        else if (data.message == 'Topup successful.' || data.message.indexOf("cheque request accepted") >= 0 || data.message.indexOf("Your tranjection history below") >= 0 || data.message.indexOf("Thanks for your information.") >= 0 || data.message.indexOf("taka in account no") >= 0 || data.message.indexOf("Terms And Conditions") >= 0 || data.message.indexOf("About Bank") >= 0) {
             $('.chat-container').append(`
                     <div class="text_bot" style="">
                         <span>${data.message}</span>

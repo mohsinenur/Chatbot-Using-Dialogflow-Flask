@@ -1,5 +1,5 @@
-body,html {
-
+    body {
+        font-family: Helvetica, Arial, sans-serif;
     }
 
     .chat-container {

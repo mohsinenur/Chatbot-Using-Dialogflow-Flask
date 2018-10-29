@@ -37,6 +37,7 @@
             font-size: 1rem;
             line-height: 1.3;
             border-radius: 1rem;
+            font-family: Helvetica, Arial, sans-serif;
         }
         .text_human {
             text-align:right;
@@ -52,6 +53,7 @@
             font-size: 1rem;
             line-height: 1.3;
             border-radius: 1rem;
+            font-family: Helvetica, Arial, sans-serif;
         }
         textarea:focus, input:focus {
             outline: none;
@@ -83,16 +85,7 @@
 
 <div class="chat-container" id="auto_scroll" style="overflow-y: auto;">
     <!-- chat messages -->
-    {% if session.logged_in%}
-    {% for message in messages %}
-    <div class="chat-message col-md-5 human-message">
-        {{ message.users_text }}
-    </div>
-    <div class="chat-message col-md-5 offset-md-7 bot-message">
-        {{ message.agent_text }}
-    </div>
-    {% endfor %}
-    {% endif %}
+
     <div class="text_bot" style="">
         {% if reply %}
         <span>{{reply}}</span>
