@@ -11,6 +11,8 @@ function button_info(button_message){
     }
 
     $('.chat-container').append(`
+        // remove the loading indicator
+        $( "#loading" ).remove();
         <div class="text_human">
              
                 <span> ${button_message}</span>
@@ -79,7 +81,7 @@ function submit_message(message) {
                 $( "#loading" ).remove();
                 div_bottom()
         }
-        else if (data.message == 'Topup successful.' || data.message.indexOf("cheque request accepted") >= 0 || data.message.indexOf("Your tranjection history below") >= 0 || data.message.indexOf("Thanks for your information.") >= 0 || data.message.indexOf("taka in account no") >= 0 || data.message.indexOf("Terms And Conditions") >= 0 || data.message.indexOf("About Bank") >= 0) {
+        else if (data.message == 'Topup successful.' || data.message.indexOf("cheque book request accepted") >= 0 || data.message.indexOf("Your tranjection history below") >= 0 || data.message.indexOf("Thanks for your information.") >= 0 || data.message.indexOf("taka in account no") >= 0 || data.message.indexOf("Terms And Conditions") >= 0 || data.message.indexOf("About Bank") >= 0) {
             $('.chat-container').append(`
                     <div class="text_bot" style="">
                         <span>${data.message}</span>

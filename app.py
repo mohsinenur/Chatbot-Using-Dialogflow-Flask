@@ -216,9 +216,68 @@ def bot():
         u_session_text = u_session_text.split('/')
         uid = u_session_text[4]
         print(uid)
-        session_value = '0'
+        cur = mysql.connection.cursor()
+        # Get user by username
+        result = cur.execute("SELECT * FROM session WHERE (session_id=%s)", [uid, ])
+        session_account = 0
+        invalid = 0
+        if result <= 0:
+            cur.execute("INSERT INTO session(session_id, account) "
+                        "VALUES(%s, %s)", (uid, session_account))
+            # Commit cursor
+            mysql.connection.commit()
+            cur.close()
+        else:
+            # Get stored value
+            raw = cur.fetchone()
+            session_account = raw['account']
+            time_raw = str(raw['time'])
+            invalid = raw['invalid']
+            invalid = int(invalid)
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if invalid >= 3:
+                time_raw = datetime.strptime(time_raw, "%Y-%m-%d %H:%M:%S")
+                time_ts = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+                diff_time = ((time_ts - time_raw).total_seconds()) / 60.0
+                if diff_time > 5:
+                    cur.execute("UPDATE session SET invalid=%s WHERE session_id=%s", (0, uid))
+                else:
+                    reply = {
+                        "fulfillmentText": 'Your account has been blocked for submitting more times invalid code. '
+                                           'Contact with Bank manager or come few hours later.',
+                    }
+                    return jsonify(reply)
+            if session_account != 0:
+                time_raw = datetime.strptime(time_raw, "%Y-%m-%d %H:%M:%S")
+                time_ts = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+                diff_time = ((time_ts - time_raw).total_seconds()) / 60.0
+                if diff_time > 5:
+                    cur.execute("DELETE FROM session WHERE session_id=%s", [uid])
+                    cur.close()
+                    reply = {
+                        "fulfillmentText": 'You have been logged out for delay. '
+                                           'Write your Bank ABC account no...',
+                        "outputContexts": [
+                            {
+                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                                "lifespanCount": 1,
+                                "parameters": {
+                                    "login.original": "login",
+                                    "login": "login"
+                                }
+                            }
+                        ],
+                    }
+                    return jsonify(reply)
+                else:
+                    cur.execute("UPDATE session SET time=%s WHERE session_id=%s", (ts, uid))
+                    cur.close()
+            else:
+                cur.execute("UPDATE session SET time=%s WHERE session_id=%s", (ts, uid))
+                cur.close()
+
         if display_name == 'User Verify':
-            if session_value == '0':
+            if session_account == 0:
                 reply = {
                     "fulfillmentText": 'Write your Bank ABC account no...',
                     "outputContexts": [
@@ -236,21 +295,56 @@ def bot():
             else:
                 reply = {
                     "fulfillmentText": 'You are already verified. How can I help you?',
+                    "fulfillmentMessages": [
+                        {
+                            "text": {
+                                "text": [
+                                    "You are already verified. How can I help you?",
+                                ]
+                            },
+                            "platform": "FACEBOOK"
+                        },
+                        {
+                            "quickReplies": {
+                                "title": "Select quick link below.",
+                                "quickReplies": [
+                                    "Banking Query",
+                                    "Top Up",
+                                    "General Information"
+                                ]
+                            },
+                            "platform": "FACEBOOK"
+                        },
+                        {
+                            "text": {
+                                "text": [
+                                    "You are already verified. How can I help you?",
+                                ]
+                            },
+                            "platform": "SKYPE"
+                        },
+                        {
+                            "quickReplies": {
+                                "title": "Select quick link below.",
+                                "quickReplies": [
+                                    "Banking Query",
+                                    "Top Up",
+                                    "General Information"
+                                ]
+                            },
+                            "platform": "SKYPE"
+                        }
+                    ],
                 }
                 return jsonify(reply)
         elif display_name == 'User Verify - Account':
             account_no = data['queryResult']['parameters']['account_no']
+            account_no = int(account_no)
             # Create cursor
             cur = mysql.connection.cursor()
             # Get user by username
-            result = cur.execute("SELECT * FROM account WHERE (account_no=%s)", [account_no, ])
-            if result > 0:
-                # Get stored value
-                data = cur.fetchone()
-                session_value = data['web_session']
-            else:
-                session_value = '0'
-            if session_value == '0':
+            result = cur.execute("SELECT * FROM session WHERE (account=%s AND session_id=%s)", [account_no, uid])
+            if not result:
                 user_detail = requests.get(
                     'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
                 user_detail = json.loads(user_detail)
@@ -293,24 +387,62 @@ def bot():
             else:
                 reply = {
                     "fulfillmentText": 'You are already verified. How can I help you?',
+                    "fulfillmentMessages": [
+                        {
+                            "text": {
+                                "text": [
+                                    "You are already verified. How can I help you?",
+                                ]
+                            },
+                            "platform": "FACEBOOK"
+                        },
+                        {
+                            "quickReplies": {
+                                "title": "Select quick link below.",
+                                "quickReplies": [
+                                    "Balance Check",
+                                    "History",
+                                    "Stop Cheque",
+                                    "Cheque Book Request",
+                                    "Top Up"
+                                ]
+                            },
+                            "platform": "FACEBOOK"
+                        },
+                        {
+                            "text": {
+                                "text": [
+                                    "You are already verified. How can I help you?",
+                                ]
+                            },
+                            "platform": "SKYPE"
+                        },
+                        {
+                            "quickReplies": {
+                                "title": "Select quick link below.",
+                                "quickReplies": [
+                                    "Balance Check",
+                                    "History",
+                                    "Stop Cheque",
+                                    "Cheque Book Request",
+                                    "Top Up"
+                                ]
+                            },
+                            "platform": "SKYPE"
+                        }
+                    ],
                 }
                 return jsonify(reply)
         elif display_name == 'User Verify - Account - VCode':
             v_code = data['queryResult']['parameters']['v_code']
             v_code = str(round(v_code))
-            uid = 'common'
             account_no = data['queryResult']['outputContexts'][0]['parameters']['account_no']
+            account_no = int(account_no)
             # Create cursor
             cur = mysql.connection.cursor()
             # Get user by username
             result = cur.execute("SELECT * FROM account WHERE (account_no=%s)", [account_no, ])
             if result > 0:
-                # Get stored value
-                data = cur.fetchone()
-                session_value = data['web_session']
-            else:
-                session_value = '0'
-            if session_value == '0':
                 user_detail = requests.get(
                     'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
                 user_detail = json.loads(user_detail)
@@ -322,10 +454,10 @@ def bot():
                     verify_code_api = verify_code_details[0]['verify_code']
                     if v_code == verify_code_api:
                         cur = mysql.connection.cursor()
-                        cur.execute("UPDATE users SET web_session=%s WHERE id=%s", (1, u_id))
+                        cur.execute("UPDATE session SET account=%s WHERE session_id=%s", (account_no, uid))
                         cur.close()
                         reply = {
-                            "fulfillmentText": 'Your verification successful. What kind of query you have?',
+                            "fulfillmentText": "Your verification successful. You will be logged out if you don't text within 5 minute or type logout when your query finish. What kind of query you have?",
                             "fulfillmentMessages": [
                                 {
                                     "text": {
@@ -337,11 +469,12 @@ def bot():
                                 },
                                 {
                                     "quickReplies": {
-                                        "title": "Have more query? Select quick link below.",
+                                        "title": "Select quick link below.",
                                         "quickReplies": [
-                                            "Banking Query",
-                                            "Top Up",
-                                            "General Information"
+                                            "Balance Check",
+                                            "History",
+                                            "Stop Cheque",
+                                            "Cheque Book Request"
                                         ]
                                     },
                                     "platform": "FACEBOOK"
@@ -356,11 +489,12 @@ def bot():
                                 },
                                 {
                                     "quickReplies": {
-                                        "title": "Have more query? Select quick link below.",
+                                        "title": "Select quick link below.",
                                         "quickReplies": [
-                                            "Banking Query",
-                                            "Top Up",
-                                            "General Information"
+                                            "Balance Check",
+                                            "History",
+                                            "Stop Cheque",
+                                            "Cheque Book Request"
                                         ]
                                     },
                                     "platform": "SKYPE"
@@ -369,6 +503,11 @@ def bot():
                         }
                         return jsonify(reply)
                     else:
+                        # Create cursor
+                        count = invalid+1
+                        cur = mysql.connection.cursor()
+                        cur.execute("UPDATE session SET invalid=%s WHERE session_id=%s", (count, uid))
+                        cur.close()
                         reply = {
                             "fulfillmentText": 'Your verification code ' + v_code + ' not matched. Write again.',
                             "outputContexts": [
@@ -404,9 +543,10 @@ def bot():
                 }
                 return jsonify(reply)
         elif display_name == 'Balance Check':
-            if uid == 'test':
+            if session_account == 0:
                 reply = {
-                    "fulfillmentText": 'I can help you with that. But first I need to verify you. Write your Bank ABC account no...',
+                    "fulfillmentText": 'I can help you with that. But first I need to verify you. '
+                                       'Write your Bank ABC account no...',
                     "outputContexts": [
                         {
                             "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
@@ -420,46 +560,21 @@ def bot():
                 }
                 return jsonify(reply)
             else:
-                reply = {
-                    "fulfillmentText": 'Write your Bank ABC account no to know balance...',
-                    "outputContexts": [
-                        {
-                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/balancecheck-followup",
-                            "lifespanCount": 1,
-                            "parameters": {
-                                "balance": "balance",
-                                "balance.original": "balance"
-                            }
-                        }
-                    ],
-                }
-                return jsonify(reply)
-        elif display_name == 'Balance Check - Account':
-            account_no = data['queryResult']['queryText']
-            # Create cursor
-            cur = mysql.connection.cursor()
-            # Get user by username
-            result = cur.execute("SELECT * FROM account WHERE (account_no=%s)", [account_no, ])
-            if result > 0:
-                session_value = '1'
-            else:
-                session_value = '0'
-            print('session value = '+str(session_value))
-            if session_value == '1':
                 user_detail = requests.get(
-                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
+                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(session_account)).content
                 user_detail = json.loads(user_detail)
                 if user_detail:
                     u_balance = user_detail[0]['balance']
+
                     reply = {
                         "fulfillmentText": 'Your balance ' + str(u_balance) + ' taka in account no ' + str(
-                            account_no) + '.',
+                            session_account) + '.',
                         "fulfillmentMessages": [
                             {
                                 "text": {
                                     "text": [
                                         'Your balance ' + str(u_balance) + ' taka in account no ' + str(
-                                            account_no) + '.',
+                                            session_account) + '.',
                                     ]
                                 },
                                 "platform": "FACEBOOK"
@@ -479,7 +594,7 @@ def bot():
                                 "text": {
                                     "text": [
                                         'Your balance ' + str(u_balance) + ' taka in account no ' + str(
-                                            account_no) + '.',
+                                            session_account) + '.',
                                     ]
                                 },
                                 "platform": "SKYPE"
@@ -498,325 +613,141 @@ def bot():
                         ],
                     }
                     return jsonify(reply)
-            else:
-                user_detail = requests.get(
-                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
-                user_detail = json.loads(user_detail)
-                if user_detail:
-                    u_id = user_detail[0]['user_id']
-                    code = random.randint(111111, 999999)
-                    # Create cursor
-                    cur = mysql.connection.cursor()
-                    cur.execute("UPDATE users SET verify_code=%s WHERE id=%s", (code, u_id))
-                    cur.close()
-                    reply = {
-                        "fulfillmentText": 'Write verification code which sent to your account mobile number.',
-                        "outputContexts": [
-                            {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/balancecheck-account-followup",
-                                "lifespanCount": 1,
-                                "parameters": {
-                                    "number": account_no,
-                                    "number.original": account_no
-                                }
-                            }
-                        ],
-
-                    }
-                    return jsonify(reply)
-                else:
-                    reply = {
-                        "fulfillmentText": 'No account found! Write again.',
-                        "outputContexts": [
-                            {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/balancecheck-followup",
-                                "lifespanCount": 1,
-                                "parameters": {
-                                    "balance": "balance",
-                                    "balance.original": "balance"
-                                }
-                            }
-                        ],
-                    }
-                    return jsonify(reply)
-        elif display_name == 'Balance Check - Account - VCode':
-            v_code = data['queryResult']['queryText']
-            account_no = data['queryResult']['outputContexts'][0]['parameters']['number.original']
-            if 'logged_in' in session:
-                reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
-                }
-                return jsonify(reply)
-            else:
-                user_detail = requests.get(
-                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
-                user_detail = json.loads(user_detail)
-                if user_detail:
-                    u_id = user_detail[0]['user_id']
-                    u_balance = user_detail[0]['balance']
-                    verify_code_details = requests.get(
-                        'http://127.0.0.1:5000/api_test/users?id={0}'.format(u_id)).content
-                    verify_code_details = json.loads(verify_code_details)
-                    verify_code_api = verify_code_details[0]['verify_code']
-                    if v_code == verify_code_api:
-                        cur = mysql.connection.cursor()
-                        cur.execute("UPDATE account SET web_session=%s WHERE account_no=%s", (1, account_no))
-                        cur.close()
-                        reply = {
-                            "fulfillmentText": 'Your balance ' + str(u_balance) + ' taka in account no ' + str(
-                                account_no) + '.',
-                            "fulfillmentMessages": [
-                                {
-                                    "text": {
-                                        "text": [
-                                            'Your balance ' + str(u_balance) + ' taka in account no ' + str(
-                                                account_no) + '.',
-                                        ]
-                                    },
-                                    "platform": "FACEBOOK"
-                                },
-                                {
-                                    "quickReplies": {
-                                        "title": "Have more query? Select quick link below.",
-                                        "quickReplies": [
-                                            "Banking Query",
-                                            "Top Up",
-                                            "General Information"
-                                        ]
-                                    },
-                                    "platform": "FACEBOOK"
-                                },
-                                {
-                                    "text": {
-                                        "text": [
-                                            'Your balance ' + str(u_balance) + ' taka in account no ' + str(
-                                                account_no) + '.',
-                                        ]
-                                    },
-                                    "platform": "SKYPE"
-                                },
-                                {
-                                    "quickReplies": {
-                                        "title": "Have more query? Select quick link below.",
-                                        "quickReplies": [
-                                            "Banking Query",
-                                            "Top Up",
-                                            "General Information"
-                                        ]
-                                    },
-                                    "platform": "SKYPE"
-                                }
-                            ],
-                        }
-                        return jsonify(reply)
-                    else:
-                        reply = {
-                            "fulfillmentText": 'Your verification code ' + v_code + ' not matched. Write again.',
-                            "outputContexts": [
-                                {
-                                    "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/balancecheck-account-followup",
-                                    "lifespanCount": 1,
-                                    "parameters": {
-                                        "number.original": account_no,
-                                        "number": account_no
-                                    }
-                                }
-                            ],
-                        }
-                        return jsonify(reply)
                 else:
                     reply = {
                         "fulfillmentText": 'Account not found! Write account number.',
                         "outputContexts": [
                             {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/balancecheck-followup",
+                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
                                 "lifespanCount": 1,
                                 "parameters": {
-                                    "balance": "balance",
-                                    "balance.original": "balance"
+                                    "login.original": "login",
+                                    "login": "login"
                                 }
                             }
                         ],
                     }
                     return jsonify(reply)
-        elif display_name == 'History':
-            if 'logged_in' in session:
-                reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
-                }
-                return jsonify(reply)
-            else:
-                reply = {
-                    "fulfillmentText": 'Write your Bank ABC account no...',
-                }
-                return jsonify(reply)
-        elif display_name == 'History - Account':
-            q_account = data['queryResult']['queryText']
-            if 'logged_in' in session:
-                reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
-                }
-                return jsonify(reply)
-            else:
-                user_detail = requests.get(
-                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(q_account)).content
-                user_detail = json.loads(user_detail)
-                if user_detail:
-                    u_id = user_detail[0]['user_id']
-                    code = random.randint(111111, 999999)
-                    # Create cursor
-                    cur = mysql.connection.cursor()
-                    cur.execute("UPDATE users SET verify_code=%s WHERE id=%s", (code, u_id))
-                    cur.close()
-                    reply = {
-                        "fulfillmentText": 'Write verification code which sent to your account mobile number.',
-                        "outputContexts": [
-                            {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/history-account-followup",
-                                "lifespanCount": 1,
-                                "parameters": {
-                                    "number.original": q_account,
-                                    "number": q_account
-                                }
-                            }
-                        ],
-                    }
-                    return jsonify(reply)
-                else:
-                    reply = {
-                        "fulfillmentText": 'Account not found. Write again.',
-                        "outputContexts": [
-                            {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/history-followup",
-                                "lifespanCount": 1,
-                                "parameters": {
-                                    "history.original": "history",
-                                    "history": "history"
-                                }
-                            }
-                        ],
-                    }
-                    return jsonify(reply)
-        elif display_name == 'History - Account - VCode':
-            v_code = data['queryResult']['queryText']
-            account_no = data['queryResult']['outputContexts'][0]['parameters']['number.original']
 
-            if 'logged_in' in session:
+        elif display_name == 'History':
+            if session_account == 0:
                 reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
+                    "fulfillmentText": 'I can help you with that. But first I need to verify you. '
+                                       'Write your Bank ABC account no...',
+                    "outputContexts": [
+                        {
+                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                            "lifespanCount": 1,
+                            "parameters": {
+                                "login.original": "login",
+                                "login": "login"
+                            }
+                        }
+                    ],
                 }
                 return jsonify(reply)
             else:
                 user_detail = requests.get(
-                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
+                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(session_account)).content
                 user_detail = json.loads(user_detail)
                 if user_detail:
-                    u_id = user_detail[0]['user_id']
-                    verify_code_details = requests.get(
-                        'http://127.0.0.1:5000/api_test/users?id={0}'.format(u_id)).content
-                    verify_code_details = json.loads(verify_code_details)
-                    verify_code_api = verify_code_details[0]['verify_code']
-                    if v_code == verify_code_api:
-                        history = ''
-                        fb_history = ''
-                        all_deposit = requests.get(
-                            'http://127.0.0.1:5000/api_test/deposit?account_no={0}'.format(account_no)).content
-                        all_deposit = json.loads(all_deposit)
-                        i = 1
-                        for info in all_deposit:
-                            amount = info['amount']
-                            trx_type = info['trx_type']
-                            date = info['date']
-                            date = datetime.strptime(date, '%a, %d %b %Y %H:%M:%S GMT')
-                            date_d = date.strftime('%d %b, %Y')
-                            date_t = date.strftime('%H:%M %p')
-                            history += '<tr><td>' + str(amount) + '</td><td>' + str(trx_type) + '</td><td>' + str(
-                                date_d) + ' ' + ' at ' + str(date_t) + '</td></tr>'
-                            fb_history += '(' + str(i) + ') ' + str(trx_type) + ' ' + str(
-                                amount) + ' taka at ' + str(date_t) + ' ' + str(date_d) + '. '
-                            i += 1
-                        reply = {
-                            "fulfillmentText": 'Your tranjection history below '
-                                               '<table class="table table-bordered">'
-                                               '<thead><tr> <th>Amount</th><th>Type</th><th>Date</th></tr></thead><tbody>'
-                                               + history +
-                                               '</tbody></table>',
-                            "fulfillmentMessages": [
-                                {
-                                    "text": {
-                                        "text": [
-                                            "Your tranjection history: " + fb_history,
-                                        ]
-                                    },
-                                    "platform": "FACEBOOK"
+                    history = ''
+                    fb_history = ''
+                    all_deposit = requests.get(
+                        'http://127.0.0.1:5000/api_test/deposit?account_no={0}'.format(session_account)).content
+                    all_deposit = json.loads(all_deposit)
+                    i = 1
+                    for info in all_deposit:
+                        amount = info['amount']
+                        trx_type = info['trx_type']
+                        date = info['date']
+                        date = datetime.strptime(date, '%a, %d %b %Y %H:%M:%S GMT')
+                        date_d = date.strftime('%d %b, %Y')
+                        date_t = date.strftime('%H:%M %p')
+                        history += '<tr><td>' + str(amount) + '</td><td>' + str(trx_type) + '</td><td>' + str(
+                            date_d) + ' ' + ' at ' + str(date_t) + '</td></tr>'
+                        fb_history += '(' + str(i) + ') ' + str(trx_type) + ' ' + str(
+                            amount) + ' taka at ' + str(date_t) + ' ' + str(date_d) + '. '
+                        i += 1
+                    reply = {
+                        "fulfillmentText": 'Your tranjection history below in account no ' + str(session_account) +
+                                           '<table class="table table-bordered">'
+                                           '<thead><tr> <th>Amount</th><th>Type</th><th>Date</th></tr></thead><tbody>'
+                                           + history +
+                                           '</tbody></table>',
+                        "fulfillmentMessages": [
+                            {
+                                "text": {
+                                    "text": [
+                                        "Your tranjection history in account no " + str(session_account) + ": " + fb_history,
+                                    ]
                                 },
-                                {
-                                    "quickReplies": {
-                                        "title": "Have more query? Select quick link below.",
-                                        "quickReplies": [
-                                            "Banking Query",
-                                            "Top Up",
-                                            "General Information"
-                                        ]
-                                    },
-                                    "platform": "FACEBOOK"
+                                "platform": "FACEBOOK"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "Have more query? Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
+                                    ]
                                 },
-                                {
-                                    "text": {
-                                        "text": [
-                                            "Your tranjection history: " + fb_history,
-                                        ]
-                                    },
-                                    "platform": "SKYPE"
+                                "platform": "FACEBOOK"
+                            },
+                            {
+                                "text": {
+                                    "text": [
+                                        "Your tranjection history in account no " + str(session_account) + ": " + fb_history,
+                                    ]
                                 },
-                                {
-                                    "quickReplies": {
-                                        "title": "Have more query? Select quick link below.",
-                                        "quickReplies": [
-                                            "Banking Query",
-                                            "Top Up",
-                                            "General Information"
-                                        ]
-                                    },
-                                    "platform": "SKYPE"
-                                }
-                            ],
-                        }
-                        return jsonify(reply)
-                    else:
-                        reply = {
-                            "fulfillmentText": 'Your verification code ' + v_code + ' not matched. Write again.',
-                            "outputContexts": [
-                                {
-                                    "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/history-account-followup",
-                                    "lifespanCount": 1,
-                                    "parameters": {
-                                        "number.original": account_no,
-                                        "number": account_no
-                                    }
-                                }
-                            ],
-                        }
-                        return jsonify(reply)
+                                "platform": "SKYPE"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "Have more query? Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
+                                    ]
+                                },
+                                "platform": "SKYPE"
+                            }
+                        ],
+                    }
+                    return jsonify(reply)
                 else:
                     reply = {
-                        "fulfillmentText": 'Account not found. Write account again.',
+                        "fulfillmentText": 'Account not found! Write account number.',
                         "outputContexts": [
                             {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/history-followup",
+                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
                                 "lifespanCount": 1,
                                 "parameters": {
-                                    "history.original": "history",
-                                    "history": "history"
+                                    "login.original": "login",
+                                    "login": "login"
                                 }
                             }
                         ],
                     }
-                return jsonify(reply)
+                    return jsonify(reply)
+
         elif display_name == 'Top Up':
-            if 'logged_in' in session:
+            if session_account == 0:
                 reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
+                    "fulfillmentText": 'I can help you with that. But first I need to verify you. '
+                                       'Write your Bank ABC account no...',
+                    "outputContexts": [
+                        {
+                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                            "lifespanCount": 1,
+                            "parameters": {
+                                "login.original": "login",
+                                "login": "login"
+                            }
+                        }
+                    ],
                 }
                 return jsonify(reply)
             else:
@@ -853,9 +784,20 @@ def bot():
                 }
                 return jsonify(reply)
         elif display_name == 'Top Up - operator':
-            if 'logged_in' in session:
+            if session_account == 0:
                 reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
+                    "fulfillmentText": 'I can help you with that. But first I need to verify you. '
+                                       'Write your Bank ABC account no...',
+                    "outputContexts": [
+                        {
+                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                            "lifespanCount": 1,
+                            "parameters": {
+                                "login.original": "login",
+                                "login": "login"
+                            }
+                        }
+                    ],
                 }
                 return jsonify(reply)
             else:
@@ -892,9 +834,20 @@ def bot():
                     }
                 return jsonify(reply)
         elif display_name == 'Top Up - operator - phone':
-            if 'logged_in' in session:
+            if session_account == 0:
                 reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
+                    "fulfillmentText": 'I can help you with that. But first I need to verify you. '
+                                       'Write your Bank ABC account no...',
+                    "outputContexts": [
+                        {
+                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                            "lifespanCount": 1,
+                            "parameters": {
+                                "login.original": "login",
+                                "login": "login"
+                            }
+                        }
+                    ],
                 }
                 return jsonify(reply)
             else:
@@ -954,15 +907,24 @@ def bot():
                     }
                 return jsonify(reply)
         elif display_name == 'Top Up - operator - phone - type':
-            if 'logged_in' in session:
+            if session_account == 0:
                 reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
+                    "fulfillmentText": 'I can help you with that. But first I need to verify you. '
+                                       'Write your Bank ABC account no...',
+                    "outputContexts": [
+                        {
+                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                            "lifespanCount": 1,
+                            "parameters": {
+                                "login.original": "login",
+                                "login": "login"
+                            }
+                        }
+                    ],
                 }
                 return jsonify(reply)
             else:
                 operator_type = ['prepaid', 'postpaid', 'pre paid', 'post paid']
-                op_type = data['queryResult']['parameters']['pre-post']
-                # mobile = data['queryResult']['parameters']['mobile']
                 text_con = query_text.lower()
                 if text_con in operator_type:
                     reply = {
@@ -995,10 +957,20 @@ def bot():
                 return jsonify(reply)
         elif display_name == 'Top Up - operator - phone - type - amount':
             amount = data['queryResult']['outputContexts'][0]['parameters']['amount']
-            op_type = data['queryResult']['outputContexts'][0]['parameters']['pre-post']
-            if 'logged_in' in session:
+            if session_account == 0:
                 reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
+                    "fulfillmentText": 'I can help you with that. But first I need to verify you. '
+                                       'Write your Bank ABC account no...',
+                    "outputContexts": [
+                        {
+                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                            "lifespanCount": 1,
+                            "parameters": {
+                                "login.original": "login",
+                                "login": "login"
+                            }
+                        }
+                    ],
                 }
                 return jsonify(reply)
             else:
@@ -1062,347 +1034,193 @@ def bot():
                     }
                 return jsonify(reply)
         elif display_name == 'Stop Check':
-            stop_check = data['queryResult']['parameters']['stop_check']
-            if 'logged_in' in session:
+            if session_account == 0:
                 reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
-                }
-                return jsonify(reply)
-            else:
-                reply = {
-                    "fulfillmentText": 'Write your Bank ABC account no...',
+                    "fulfillmentText": 'I can help you with that. But first I need to verify you. '
+                                       'Write your Bank ABC account no...',
                     "outputContexts": [
                         {
-                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/stopcheck-followup",
+                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
                             "lifespanCount": 1,
                             "parameters": {
-                                "stop_check.original": query_text,
-                                "stop_check": stop_check
+                                "login.original": "login",
+                                "login": "login"
                             }
                         }
                     ],
                 }
                 return jsonify(reply)
-        elif display_name == 'Stop Check - Account':
-            q_account = data['queryResult']['parameters']['account_no']
-            q_account = str(round(q_account))
-            if 'logged_in' in session:
-                reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
-                }
-                return jsonify(reply)
             else:
                 user_detail = requests.get(
-                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(q_account)).content
+                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(session_account)).content
                 user_detail = json.loads(user_detail)
                 if user_detail:
-                    u_id = user_detail[0]['user_id']
-                    code = random.randint(111111, 999999)
-                    # Create cursor
-                    cur = mysql.connection.cursor()
-                    cur.execute("UPDATE users SET verify_code=%s WHERE id=%s", (code, u_id))
-                    cur.close()
                     reply = {
-                        "fulfillmentText": 'Write verification code which sent to your account mobile number.',
-                        "outputContexts": [
+                        "fulfillmentText": 'Thanks for your information. Your account no ' + str(session_account) + ' cheque stopped. Very soon we will contact with you.',
+                        "fulfillmentMessages": [
                             {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/stopcheck-account-followup",
-                                "lifespanCount": 1,
-                                "parameters": {
-                                    "account_no": q_account,
-                                    "account_no.original": query_text,
-                                }
+                                "text": {
+                                    "text": [
+                                        "Thanks for your information. Your account no " + str(session_account) + " cheque stopped. Very soon we will contact with you.",
+                                    ]
+                                },
+                                "platform": "FACEBOOK"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "Have more query? Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
+                                    ]
+                                },
+                                "platform": "FACEBOOK"
+                            },
+                            {
+                                "text": {
+                                    "text": [
+                                        "Thanks for your information. Your account no " + str(session_account) + " cheque stopped. Very soon we will contact with you.",
+                                    ]
+                                },
+                                "platform": "SKYPE"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "Have more query? Select quick link below.",
+                                    "quickReplies": [
+                                        "Banking Query",
+                                        "Top Up",
+                                        "General Information"
+                                    ]
+                                },
+                                "platform": "SKYPE"
                             }
                         ],
                     }
                     return jsonify(reply)
                 else:
                     reply = {
-                        "fulfillmentText": 'Account not found. Write again.',
+                        "fulfillmentText": 'Account not found! Write account number.',
                         "outputContexts": [
                             {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/stopcheck-followup",
+                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
                                 "lifespanCount": 1,
                                 "parameters": {
-                                    "stop_check": 'stop check'
+                                    "login.original": "login",
+                                    "login": "login"
                                 }
                             }
                         ],
                     }
                     return jsonify(reply)
-        elif display_name == 'Stop Check - Account - VCode':
-            v_code = data['queryResult']['parameters']['sv_code']
-            v_code = str(round(v_code))
-            account_no = data['queryResult']['outputContexts'][0]['parameters']['account_no']
-            if 'logged_in' in session:
-                reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
-                }
-                return jsonify(reply)
-            else:
-                user_detail = requests.get(
-                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
-                user_detail = json.loads(user_detail)
-                if user_detail:
-                    u_id = user_detail[0]['user_id']
-                    verify_code_details = requests.get(
-                        'http://127.0.0.1:5000/api_test/users?id={0}'.format(u_id)).content
-                    verify_code_details = json.loads(verify_code_details)
-                    verify_code_api = verify_code_details[0]['verify_code']
-                    if v_code == verify_code_api:
-                        reply = {
-                            "fulfillmentText": 'Thanks for your information. Your cheque stopped. Very soon we will contact with you.',
-                            "fulfillmentMessages": [
-                                {
-                                    "text": {
-                                        "text": [
-                                            "Thanks for your information. Your cheque stopped. Very soon we will contact with you.",
-                                        ]
-                                    },
-                                    "platform": "FACEBOOK"
-                                },
-                                {
-                                    "quickReplies": {
-                                        "title": "Have more query? Select quick link below.",
-                                        "quickReplies": [
-                                            "Banking Query",
-                                            "Top Up",
-                                            "General Information"
-                                        ]
-                                    },
-                                    "platform": "FACEBOOK"
-                                },
-                                {
-                                    "text": {
-                                        "text": [
-                                            "Thanks for your information. Your cheque stopped. Very soon we will contact with you.",
-                                        ]
-                                    },
-                                    "platform": "SKYPE"
-                                },
-                                {
-                                    "quickReplies": {
-                                        "title": "Have more query? Select quick link below.",
-                                        "quickReplies": [
-                                            "Banking Query",
-                                            "Top Up",
-                                            "General Information"
-                                        ]
-                                    },
-                                    "platform": "SKYPE"
-                                }
-                            ],
-                        }
-                        return jsonify(reply)
-                    else:
-                        reply = {
-                            "fulfillmentText": 'Your verification code ' + str(v_code) + ' not matched. Write again.',
-                            "outputContexts": [
-                                {
-                                    "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/stopcheck-account-followup",
-                                    "lifespanCount": 1,
-                                    "parameters": {
-                                        "account_no.original": query_text,
-                                        "account_no": account_no
-                                    }
-                                }
-                            ],
-                        }
-                        return jsonify(reply)
-                else:
-                    reply = {
-                        "fulfillmentText": 'Account not found. Write account again.',
-                        "outputContexts": [
-                            {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/stopcheck-account-followup",
-                                "lifespanCount": 1,
-                                "parameters": {
-                                    "account_no": account_no,
-                                    "account_no.original": query_text,
-                                }
-                            }
-                        ],
-                    }
-                return jsonify(reply)
+
         elif display_name == 'Cheque Book Request':
-            cheque_book_request = data['queryResult']['parameters']['cheque_book_request']
-            if 'logged_in' in session:
+            if session_account == 0:
                 reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
-                }
-                return jsonify(reply)
-            else:
-                reply = {
-                    "fulfillmentText": 'Write your Bank ABC account no...',
+                    "fulfillmentText": 'I can help you with that. But first I need to verify you. '
+                                       'Write your Bank ABC account no...',
                     "outputContexts": [
                         {
-                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/chequebookrequest-followup",
+                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
                             "lifespanCount": 1,
                             "parameters": {
-                                "cheque_book_request.original": query_text,
-                                "cheque_book_request": cheque_book_request
+                                "login.original": "login",
+                                "login": "login"
                             }
                         }
                     ],
                 }
                 return jsonify(reply)
-        elif display_name == 'Cheque Book Request - Account':
-            account_no = data['queryResult']['parameters']['account_num']
-            q_account = str(round(account_no))
-            if 'logged_in' in session:
-                reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
-                }
-                return jsonify(reply)
             else:
                 user_detail = requests.get(
-                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(q_account)).content
+                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(session_account)).content
                 user_detail = json.loads(user_detail)
                 if user_detail:
-                    u_id = user_detail[0]['user_id']
-                    code = random.randint(111111, 999999)
-                    # Create cursor
-                    cur = mysql.connection.cursor()
-                    cur.execute("UPDATE users SET verify_code=%s WHERE id=%s", (code, u_id))
-                    cur.close()
                     reply = {
-                        "fulfillmentText": 'Write verification code which sent to your account mobile number.',
-                        "outputContexts": [
+                        "fulfillmentText": 'How many pages?',
+                        "fulfillmentMessages": [
                             {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/chequebookrequest-account-followup",
-                                "lifespanCount": 1,
-                                "parameters": {
-                                    "account_num.original": query_text,
-                                    "account_num": q_account,
-                                }
-                            }
-                        ],
-                    }
-                    return jsonify(reply)
-                else:
-                    reply = {
-                        "fulfillmentText": 'Account not found. Write again.',
-                        "outputContexts": [
-                            {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/chequebookrequest-followup",
-                                "lifespanCount": 1,
-                                "parameters": {
-                                    "cheque_book_request": 'cheque book request'
-                                }
-                            }
-                        ],
-                    }
-                    return jsonify(reply)
-        elif display_name == 'Cheque Book Request - Account - VCode':
-            v_code = data['queryResult']['parameters']['cv_code']
-            v_code = str(round(v_code))
-            account_no = data['queryResult']['outputContexts'][0]['parameters']['account_num']
-            if 'logged_in' in session:
-                reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
-                }
-                return jsonify(reply)
-            else:
-                user_detail = requests.get(
-                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
-                user_detail = json.loads(user_detail)
-                if user_detail:
-                    u_id = user_detail[0]['user_id']
-                    verify_code_details = requests.get(
-                        'http://127.0.0.1:5000/api_test/users?id={0}'.format(u_id)).content
-                    verify_code_details = json.loads(verify_code_details)
-                    verify_code_api = verify_code_details[0]['verify_code']
-                    if v_code == verify_code_api:
-                        reply = {
-                            "fulfillmentText": 'How many pages?',
-                            "fulfillmentMessages": [
-                                {
-                                    "quickReplies": {
-                                        "title": "How many pages?",
-                                        "quickReplies": [
-                                            "10",
-                                            "25",
-                                            "50"
-                                        ]
-                                    },
-                                    "platform": "FACEBOOK"
+                                "quickReplies": {
+                                    "title": "How many pages?",
+                                    "quickReplies": [
+                                        "10",
+                                        "25",
+                                        "50"
+                                    ]
                                 },
-                                {
-                                    "quickReplies": {
-                                        "title": "How many pages?",
-                                        "quickReplies": [
-                                            "10",
-                                            "25",
-                                            "50"
-                                        ]
-                                    },
-                                    "platform": "SKYPE"
+                                "platform": "FACEBOOK"
+                            },
+                            {
+                                "quickReplies": {
+                                    "title": "How many pages?",
+                                    "quickReplies": [
+                                        "10",
+                                        "25",
+                                        "50"
+                                    ]
+                                },
+                                "platform": "SKYPE"
+                            }
+                        ],
+                        "outputContexts": [
+                            {
+                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/chequebookrequest-account-vcode-followup",
+                                "lifespanCount": 1,
+                                "parameters": {
                                 }
-                            ],
-                            "outputContexts": [
-                                {
-                                    "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/chequebookrequest-account-vcode-followup",
-                                    "lifespanCount": 1,
-                                    "parameters": {
-                                        "account_num.original": account_no,
-                                        "account_num": account_no
-                                    }
-                                }
-                            ],
-                        }
-                        return jsonify(reply)
-                    else:
-                        reply = {
-                            "fulfillmentText": 'Your verification code ' + str(v_code) + ' not matched. Write again.',
-                            "outputContexts": [
-                                {
-                                    "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/chequebookrequest-account-followup",
-                                    "lifespanCount": 1,
-                                    "parameters": {
-                                        "account_num.original": account_no,
-                                        "account_num": account_no
-                                    }
-                                }
-                            ],
-                        }
-                        return jsonify(reply)
+                            }
+                        ],
+                    }
+                    return jsonify(reply)
                 else:
                     reply = {
-                        "fulfillmentText": 'Account not found. Write account again.',
+                        "fulfillmentText": 'Account not found! Write account number.',
                         "outputContexts": [
                             {
                                 "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/chequebookrequest-followup",
                                 "lifespanCount": 1,
                                 "parameters": {
-                                    "cheque_book_request": 'cheque book request'
+                                    "login.original": "login",
+                                    "login": "login"
                                 }
                             }
                         ],
                     }
-                return jsonify(reply)
-        elif display_name == 'Cheque Book Request - Account - VCode - Page':
+                    return jsonify(reply)
+        elif display_name == 'Cheque Book Request - Page':
             pages = data['queryResult']['parameters']['pages']
             pages = round(pages)
-            account_no = data['queryResult']['outputContexts'][0]['parameters']['account_num']
-            if 'logged_in' in session:
+            if session_account == 0:
                 reply = {
-                    "fulfillmentText": 'Please, write verification code which sent to your number.',
+                    "fulfillmentText": 'I can help you with that. But first I need to verify you. '
+                                       'Write your Bank ABC account no...',
+                    "outputContexts": [
+                        {
+                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                            "lifespanCount": 1,
+                            "parameters": {
+                                "login.original": "login",
+                                "login": "login"
+                            }
+                        }
+                    ],
                 }
                 return jsonify(reply)
             else:
                 user_detail = requests.get(
-                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(account_no)).content
+                    'http://127.0.0.1:5000/api_test/account?account_no={0}'.format(session_account)).content
                 user_detail = json.loads(user_detail)
                 if user_detail:
                     page_num = [10, 20, 25, 50, 100]
                     if pages in page_num:
                         reply = {
-                            "fulfillmentText": 'Your cheque request accepted.',
+                            "fulfillmentText": 'Your cheque book request accepted.',
                             "fulfillmentMessages": [
                                 {
                                     "text": {
                                         "text": [
-                                            "Your cheque request accepted.",
+                                            "Your cheque book request accepted.",
                                         ]
                                     },
                                     "platform": "FACEBOOK"
@@ -1421,7 +1239,7 @@ def bot():
                                 {
                                     "text": {
                                         "text": [
-                                            "Your cheque request accepted.",
+                                            "Your cheque book request accepted.",
                                         ]
                                     },
                                     "platform": "SKYPE"
@@ -1445,11 +1263,10 @@ def bot():
                             "fulfillmentText": 'Page number not valid. Write again.',
                             "outputContexts": [
                                 {
-                                    "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/chequebookrequest-account-vcode-followup",
+                                    "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/chequebookrequest-followup",
                                     "lifespanCount": 1,
                                     "parameters": {
-                                        "account_num.original": account_no,
-                                        "account_num": account_no
+
                                     }
                                 }
                             ],
@@ -1457,18 +1274,19 @@ def bot():
                         return jsonify(reply)
                 else:
                     reply = {
-                        "fulfillmentText": 'Account not found. Write account again.',
+                        "fulfillmentText": 'Account not found! Write account number.',
                         "outputContexts": [
                             {
-                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/chequebookrequest-followup",
+                                "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
                                 "lifespanCount": 1,
                                 "parameters": {
-                                    "cheque_book_request": 'cheque book request'
+                                    "login.original": "login",
+                                    "login": "login"
                                 }
                             }
                         ],
                     }
-                return jsonify(reply)
+                    return jsonify(reply)
         elif display_name == 'Services':
             if 'logged_in' in session:
                 reply = {
@@ -1781,7 +1599,31 @@ def bot():
                 ],
             }
             return jsonify(reply)
-
+        elif display_name == 'Logout':
+            if session_account == 0:
+                reply = {
+                    "fulfillmentText": 'You are not login. '
+                                       'Write your Bank ABC account no...',
+                    "outputContexts": [
+                        {
+                            "name": "projects/customercarechatbot-d2f6c/agent/sessions/" + uid + "/contexts/userverify-followup",
+                            "lifespanCount": 1,
+                            "parameters": {
+                                "login.original": "login",
+                                "login": "login"
+                            }
+                        }
+                    ],
+                }
+                return jsonify(reply)
+            else:
+                cur = mysql.connection.cursor()
+                cur.execute("DELETE FROM session WHERE session_id=%s", [uid])
+                cur.close()
+                reply = {
+                    "fulfillmentText": 'You are successfully logout. Thanks for using Bank ABC.',
+                }
+                return jsonify(reply)
         else:
             reply = {
                 "fulfillmentText": 'Something went wrong in display name!',
@@ -1793,23 +1635,14 @@ def bot():
 def send_message():
     message = request.form['message']
     project_id = os.getenv('DIALOGFLOW_PROJECT_ID')
-    if 'logged_in' in session:
-        uid = session['uid']
+    if 'session_id' in session:
+        uid = session['session_id']
         fulfillment_text = detect_intent_texts(project_id, uid, message, 'en')
         response_text = {"message": fulfillment_text}
-        text_session = fulfillment_text
-        # Create Cursor
-        cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO messages(user_id, users_text, agent_text, session) " "VALUES(%s, %s, %s, %s)",
-                    (uid, message, fulfillment_text, text_session))
-
-        # Commit cursor
-        mysql.connection.commit()
-
-        # Close Connection
-        cur.close()
     else:
-        fulfillment_text = detect_intent_texts(project_id, "unique", message, 'en')
+        session_id = random.randint(1111111111, 9999999999)
+        session['session_id'] = session_id
+        fulfillment_text = detect_intent_texts(project_id, session_id, message, 'en')
         response_text = {"message": fulfillment_text}
     return jsonify(response_text)
 
