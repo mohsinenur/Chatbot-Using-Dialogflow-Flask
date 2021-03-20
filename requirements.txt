@@ -41,7 +41,7 @@ incremental==17.5.0
 inflection==0.3.1
 inline==0.0.1
 itsdangerous==0.24
-Jinja2==2.10
+Jinja2==2.11.3
 kiwisolver==1.0.1
 Mail==2.1.0
 MarkupSafe==0.23
