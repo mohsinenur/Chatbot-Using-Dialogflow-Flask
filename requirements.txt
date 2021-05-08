@@ -20,7 +20,7 @@ django-heroku==0.3.1
 docopt==0.6.2
 eloquent==0.5
 enum-compat==0.0.2
-eventlet==0.21.0
+eventlet==0.31.0
 Flask==1.0.2
 flask-mail==0.9.1
 Flask-MySQL==1.4.0
