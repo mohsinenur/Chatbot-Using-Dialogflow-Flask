@@ -86,7 +86,7 @@ scikit-learn==0.19.2
 simplejson==3.16.0
 six==1.11.0
 SQLAlchemy==1.2.10
-Twisted==18.7.0
+Twisted==22.2.0
 unicode==2.6
 urllib3==1.23
 virtualenv==16.0.0
