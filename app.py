@@ -1704,29 +1704,29 @@ def create_intent(project_id, display_name, training_phrases_parts,
 
 users = [  # user list
     {'name': 'Mukul Ahmed',
-     'mobile': '01725652630',
+     'mobile': '0160000000',
      'account_no': '4567890123',
      'amount': '5000',
      'verify_code': 'MNBVCX',
      'email': 'mukulseu@gmail.com'},
     {'name': 'Rahat Khan',
-     'mobile': '01725652640',
+     'mobile': '015000000',
      'account_no': '3456789012',
      'amount': '8000',
      'verify_code': 'ZXCVBN',
      'email': 'rahat@gmail.com'},
     {'name': 'Aminul Islam',
-     'mobile': '01725652650',
+     'mobile': '01688888888',
      'account_no': '2345678901',
      'amount': '51000',
      'verify_code': 'ASDFGH',
      'email': 'aminul@gmail.com'},
     {'name': 'Nur Mohsin',
-     'mobile': '01677531881',
+     'mobile': '0178888888',
      'account_no': '1234567890',
      'amount': '25000',
      'verify_code': 'QWERTY',
-     'email': 'mohsin@gmail.com'}
+     'email': 'test@gmail.com'}
 ]
 
 
