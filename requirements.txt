@@ -92,7 +92,7 @@ urllib3==1.23
 virtualenv==16.0.0
 virtualenv-clone==0.3.0
 virtualenvwrapper-win==1.2.5
-Werkzeug==0.14.1
+Werkzeug==0.15.3
 whitenoise==3.3.1
 WTForms==2.2.1
 yahooweather==0.10
